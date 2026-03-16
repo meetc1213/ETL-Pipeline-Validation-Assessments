@@ -1,0 +1,1664 @@
+[
+  {
+    "slug": "trfm_tw_type_slug_domain_scaling_factors",
+    "caption": "Task Score Scaling Factors",
+    "description": "",
+    "structure": "dataframe",
+    "schema_simple": [
+      "tw_type_slug",
+      "item_domain",
+      "weight_reference",
+      "weight_current",
+      "weight_scaling",
+      "scaling_factor"
+    ],
+    "method": "api-method",
+    "methodConfig": {
+      "slug": "SQL_02_ASMT_SPECS_SCALING_FACTORS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "test_window_ids"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_ta_from_tw",
+    "description": "Loads test windows",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_05A_ATTEMPTS_FROM_TW_ID"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "test_window_ids"
+        }
+      },
+      {
+        "param": "schl_dist_group_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "schl_dist_group_ids"
+        }
+      },
+      {
+        "param": "include_sample_assessments",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "include_sample_assessments"
+        }
+      },
+      {
+        "param": "limit",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "n_attempt_limit"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_db_schools",
+    "description": "Loads all available schools in a district",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_04A_GROUPS_SCHOOLS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "include_sample_schools",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "include_sample_schools"
+        }
+      },
+      {
+        "param": "schl_dist_group_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "schl_dist_group_ids"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_db_school_groupings",
+    "description": "Loads groupings (classes) associated with an administration window",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_04B_REGISTRATIONS_SCHOOL_GROUPINGS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "test_window_ids"
+        }
+      },
+      {
+        "param": "s_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_db_schools",
+          "col": "s_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_db_student_grouping_registrations",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_04B_REGISTRATIONS_STU_G_REGSTRATIONS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "sc_gids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_db_school_groupings",
+          "col": "sc_gid"
+        }
+      },
+      {
+        "param": "limit",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "n_student_limit"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_db_students",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query-chunked",
+    "methodConfig": {
+      "querySlug": "SQL_04B_REGISTRATIONS_STUDENTS",
+      "chunkSize": 1000,
+      "chunkedParam": "uids",
+      "makeDistinct": true
+    },
+    "dependencySourcings": [
+      {
+        "param": "uids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_db_student_grouping_registrations",
+          "col": "uid"
+        }
+      },
+      {
+        "param": "limit",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "n_student_limit"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_schools_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "result",
+          "config": {
+            "df_input": "schools",
+            "col": "sd_gid",
+            "comparison": "in",
+            "value_src": "schl_dist_group_ids"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "schools",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_db_schools"
+        }
+      },
+      {
+        "param": "schl_dist_group_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "schl_dist_group_ids"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_school_groupings_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "result",
+          "config": {
+            "df_input": "school-groupings",
+            "col": "s_id",
+            "comparison": "in",
+            "value_src": "s_ids"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "school-groupings",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_db_school_groupings"
+        }
+      },
+      {
+        "param": "s_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_schools_in_sb",
+          "col": "s_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_student_grouping_registrations_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "result",
+          "config": {
+            "df_input": "student_grouping_registrations",
+            "col": "sc_gid",
+            "comparison": "in",
+            "value_src": "sc_gids"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "student_grouping_registrations",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_db_student_grouping_registrations"
+        }
+      },
+      {
+        "param": "sc_gids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_school_groupings_in_sb",
+          "col": "sc_gid"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_students_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "result",
+          "config": {
+            "df_input": "students",
+            "col": "uid",
+            "comparison": "in",
+            "value_src": "uids"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "students",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_db_students"
+        }
+      },
+      {
+        "param": "uids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_student_grouping_registrations_in_sb",
+          "col": "uid"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_ta_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "result",
+          "config": {
+            "df_input": "attempts",
+            "col": "uid",
+            "comparison": "in",
+            "value_src": "uids"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_ta_from_tw"
+        }
+      },
+      {
+        "param": "uids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_students_in_sb",
+          "col": "uid"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_twtar",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_02_ASMT_SPECS_TEST_WINDOW_ALLOC_RULES"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "test_window_ids"
+        }
+      },
+      {
+        "param": "include_sample_assessments",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "include_sample_assessments"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_tw",
+    "description": "Loads test windows",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_01_SYS_TEST_WINDOWS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "test_window_ids"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_ta_detail_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "schema_simple": [
+      "test_window_id",
+      "tw_type_slug",
+      "s_gid",
+      "s_name",
+      "sc_gid",
+      "sc_name",
+      "uid",
+      "stu_gov_id",
+      "first_name",
+      "last_name",
+      "attempt_id",
+      "twtar_id",
+      "window_code",
+      "long_name",
+      "type_slug",
+      "lang"
+    ],
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "attempts",
+            "right": "students",
+            "left_on": "uid",
+            "right_on": "uid"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "twtar",
+          "config": {
+            "df_input": "twtar",
+            "cols": [
+              "test_window_id",
+              "twtar_id",
+              "window_code",
+              "long_name",
+              "type_slug",
+              "lang"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "df",
+            "right": "twtar",
+            "left_on": "twtar_id",
+            "right_on": "twtar_id"
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "df",
+            "right": "load_tw",
+            "left_on": "test_window_id",
+            "right_on": "test_window_id"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "df",
+          "config": {
+            "df_input": "df",
+            "cols": [
+              "test_window_id",
+              "tw_type_slug",
+              "s_gid",
+              "s_name",
+              "sc_gid",
+              "sc_name",
+              "uid",
+              "stu_gov_id",
+              "first_name",
+              "last_name",
+              "attempt_id",
+              "twtar_id",
+              "window_code",
+              "long_name",
+              "type_slug",
+              "lang"
+            ]
+          }
+        }
+      ],
+      "output": "df"
+    },
+    "dependencySourcings": [
+      {
+        "param": "attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_ta_in_sb"
+        }
+      },
+      {
+        "param": "students",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_db_students"
+        }
+      },
+      {
+        "param": "twtar",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_twtar"
+        }
+      },
+      {
+        "param": "load_tw",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_tw"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_uid_detail_in_sb",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "schema_simple": [
+      "test_window_id",
+      "tw_type_slug",
+      "s_gid",
+      "s_name",
+      "sc_gid",
+      "sc_name",
+      "uid",
+      "stu_gov_id",
+      "first_name",
+      "last_name",
+      "attempt_id",
+      "window_code",
+      "lang"
+    ],
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "result",
+          "config": {
+            "df_input": "df_ta_detail_in_sb",
+            "group_by": [
+              "test_window_id",
+              "tw_type_slug",
+              "s_gid",
+              "s_name",
+              "sc_gid",
+              "sc_name",
+              "uid",
+              "stu_gov_id",
+              "first_name",
+              "last_name",
+              "window_code",
+              "lang"
+            ],
+            "agg": [
+              {
+                "col_new": "n_twtar_entries",
+                "agg_type": "count"
+              }
+            ]
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "df_ta_detail_in_sb",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_ta_detail_in_sb"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_ta_from_uid",
+    "description": "Loads all test attempts for enrolled students in the school board",
+    "structure": "dataframe",
+    "method": "query-chunked",
+    "methodConfig": {
+      "querySlug": "SQL_05A_ATTEMPTS_FROM_UID",
+      "chunkSize": 1000,
+      "chunkedParam": "uids",
+      "makeDistinct": true
+    },
+    "dependencySourcings": [
+      {
+        "param": "uids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_students_in_sb",
+          "col": "uid"
+        }
+      },
+      {
+        "param": "twtar_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_twtar",
+          "col": "twtar_id"
+        }
+      },
+      {
+        "param": "schl_dist_group_ids",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "schl_dist_group_ids"
+        }
+      },
+      {
+        "param": "include_sample_assessments",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "include_sample_assessments"
+        }
+      },
+      {
+        "param": "limit",
+        "type": "job-config",
+        "config": {
+          "configSlug": "pipeline_config",
+          "param": "n_attempt_limit"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_sb_student_exceptions",
+    "description": "Loads Student Exceptions for the school board",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_04B_STUDENT_EXCEPTIONS"
+    },
+    "dependencySourcings": [
+      {
+        "param": "uids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_students_in_sb",
+          "col": "uid"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_ta_exceptions_applied",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "exceptions",
+          "config": {
+            "df_input": "exceptions",
+            "col": "attempt_id",
+            "comparison": "non-null"
+          }
+        },
+        {
+          "kind": "filter-col",
+          "df_output": "test_attempts",
+          "config": {
+            "df_input": "test_attempts",
+            "col": "attempt_id",
+            "comparison": "not-in",
+            "value_src": {
+              "df": "exceptions",
+              "col": "test_attempt_id"
+            }
+          }
+        }
+      ],
+      "output": "test_attempts"
+    },
+    "dependencySourcings": [
+      {
+        "param": "test_attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_ta_from_uid"
+        }
+      },
+      {
+        "param": "exceptions",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_sb_student_exceptions"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_sb_taqr",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query-chunked",
+    "methodConfig": {
+      "querySlug": "SQL_05B_TAQR_FROM_TA_ID",
+      "chunkedParam": "ta_ids",
+      "chunkSize": 500
+    },
+    "partitionOut": {
+      "key": "partby_ta_ids",
+      "field": "ta_id",
+      "partSize": 500
+    },
+    "dependencySourcings": [
+      {
+        "param": "ta_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_ta_exceptions_applied",
+          "col": "attempt_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_sb_formatted_responses",
+    "description": "",
+    "structure": "dataframe",
+    "method": "api-request-chunked",
+    "methodConfig": {
+      "endpoint": "public/test-ctrl/schools/student-responses",
+      "method": "POST",
+      "props": {},
+      "data": {
+        "isRawIncluded": false,
+        "taqr_ids": []
+      },
+      "chunkedParam": "taqr_ids",
+      "chunkSize": 1000
+    },
+    "partitionBy": {
+      "key": "partby_ta_ids"
+    },
+    "dependencySourcings": [
+      {
+        "param": "taqr_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_sb_taqr",
+          "col": "taqr_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_ta_detail",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query-chunked",
+    "methodConfig": {
+      "querySlug": "SQL_05A_ATTEMPTS_DETAIL_FROM_TA_ID",
+      "chunkedParam": "ta_ids",
+      "chunkSize": 5000
+    },
+    "dependencySourcings": [
+      {
+        "param": "ta_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_ta_from_tw",
+          "col": "attempt_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_sb_item_responses",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "load_taqr",
+            "right": "load_formatted_responses",
+            "left_on": "taqr_id",
+            "right_on": "response_id"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "load_ta_detail",
+          "config": {
+            "df_input": "load_ta_detail",
+            "cols": [
+              "attempt_id",
+              "assessment_code"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "df",
+            "right": "load_ta_detail",
+            "left_on": "ta_id",
+            "right_on": "attempt_id"
+          }
+        }
+      ],
+      "output": "df"
+    },
+    "partitionBy": {
+      "key": "partby_ta_ids",
+      "concatOut": false
+    },
+    "partitionOut": {
+      "key": "by_assessment_code",
+      "field": "assessment_code",
+      "categorical": true
+    },
+    "dependencySourcings": [
+      {
+        "param": "load_taqr",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_sb_taqr"
+        }
+      },
+      {
+        "param": "load_formatted_responses",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_sb_formatted_responses"
+        }
+      },
+      {
+        "param": "load_ta_detail",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_ta_detail",
+          "cols": [
+            "student_uid",
+            "student_gov_id",
+            "s_name",
+            "s_code",
+            "lang"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "slug": "load_item_register_consolidated",
+    "description": "",
+    "structure": "dataframe",
+    "method": "query",
+    "methodConfig": {
+      "querySlug": "SQL_03_ASMT_CONTENT_ITEM_REGISTER_CONSOLIDATED"
+    },
+    "partitionOut": {
+      "key": "by_course_code",
+      "field": "course_code",
+      "categorical": true
+    },
+    "dependencySourcings": [
+      {
+        "param": "twtar_ids",
+        "type": "asset-col",
+        "config": {
+          "asset": "load_twtar",
+          "col": "twtar_id"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_responses_with_domain",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "df",
+          "config": {
+            "df_input": "item_register",
+            "group_by": [
+              "item_id"
+            ],
+            "agg": [
+              {
+                "col_new": "item_domain",
+                "agg_type": "first",
+                "col_target": "item_domain"
+              },
+              {
+                "col_new": "is_practice_test",
+                "agg_type": "first",
+                "col_target": "is_practice_test"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "df",
+          "config": {
+            "how": "inner",
+            "left": "item_responses",
+            "right": "df",
+            "left_on": "item_id",
+            "right_on": "item_id"
+          }
+        }
+      ],
+      "output": "df"
+    },
+    "partitionBy": {
+      "key": "partby_ta_ids",
+      "concatOut": true
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_responses",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_sb_item_responses"
+        }
+      },
+      {
+        "param": "item_register",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_item_register_consolidated"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_attempt_item_responses_filled",
+    "description": "Item responses with imputed values for blank responses",
+    "structure": "dataframe",
+    "partitionBy": {
+      "key": "partby_ta_ids"
+    },
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "filter-col",
+          "df_output": "item_responses",
+          "config": {
+            "df_input": "item_responses",
+            "col": "is_invalid",
+            "comparison": "equals",
+            "value": 0
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "test_attempts",
+          "config": {
+            "df_input": "test_attempts",
+            "cols": [
+              "attempt_id",
+              "uid",
+              "twtar_id",
+              "ts_id",
+              "test_form_id"
+            ]
+          }
+        },
+        {
+          "kind": "filter-col",
+          "df_output": "test_attempts",
+          "config": {
+            "df_input": "test_attempts",
+            "col": "attempt_id",
+            "comparison": "in",
+            "value_src": {
+              "df": "item_responses",
+              "col": "ta_id"
+            }
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "twtar",
+          "config": {
+            "df_input": "twtar",
+            "cols": [
+              "twtar_id",
+              "td_id",
+              "test_window_id",
+              "type_slug",
+              "form_code",
+              "window_code"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "test_attempts",
+          "config": {
+            "how": "inner",
+            "left": "test_attempts",
+            "right": "twtar",
+            "left_on": "twtar_id",
+            "right_on": "twtar_id"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "tqr",
+          "config": {
+            "df_input": "tqr",
+            "cols": [
+              "test_design_id",
+              "item_id",
+              "response_lang",
+              "item_nbr",
+              "item_domain"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "test_attempts",
+          "config": {
+            "how": "inner",
+            "left": "test_attempts",
+            "right": "tqr",
+            "left_on": "td_id",
+            "right_on": "test_design_id"
+          }
+        },
+        {
+          "kind": "sort-by",
+          "df_output": "test_attempts",
+          "config": {
+            "df_input": "test_attempts",
+            "cols": [
+              "attempt_id",
+              "item_nbr",
+              "item_id"
+            ],
+            "ascending": [
+              true,
+              true,
+              true
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "item_responses",
+          "config": {
+            "how": "left",
+            "left": "test_attempts",
+            "right": "item_responses",
+            "left_on": [
+              "attempt_id",
+              "item_id"
+            ],
+            "right_on": [
+              "ta_id",
+              "item_id"
+            ]
+          }
+        },
+        {
+          "kind": "fill-na",
+          "df_output": "item_responses",
+          "config": {
+            "df_input": "item_responses",
+            "values": {
+              "score": 0,
+              "is_nr": 1,
+              "is_invalid": 0,
+              "formatted_response": "",
+              "formatted_response_strict": "",
+              "response_type": "",
+              "is_score_override": 0
+            },
+            "inplace": true
+          }
+        },
+        {
+          "kind": "rename-cols",
+          "df_output": "item_responses",
+          "config": {
+            "df_input": "item_responses",
+            "new_names": {
+              "ta_id": "test_attempt_id",
+              "td_id": "test_design_id",
+              "weight": "score_max",
+              "type_slug": "asmt_code"
+            }
+          }
+        }
+      ],
+      "output": "item_responses"
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_responses",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_responses_with_domain"
+        }
+      },
+      {
+        "param": "tqr",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_item_register_consolidated"
+        }
+      },
+      {
+        "param": "test_attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_ta_from_tw"
+        }
+      },
+      {
+        "param": "twtar",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_twtar",
+          "cols": [
+            "twtar_id",
+            "td_id"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_stu_perf_overall",
+    "caption": "Student overall Performance",
+    "description": "Overall Student performance on assessment",
+    "structure": "dataframe",
+    "schema_simple": [
+      "test_window_id",
+      "tw_type_slug",
+      "window_code",
+      "uid",
+      "s_name",
+      "sc_name",
+      "s_gid",
+      "sc_gid",
+      "item_domain",
+      "n_items_responded",
+      "total_scaled_score",
+      "stu_gov_id",
+      "first_name",
+      "last_name"
+    ],
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "result",
+          "config": {
+            "df_input": "result",
+            "group_by": [
+              "test_window_id",
+              "tw_type_slug",
+              "window_code",
+              "uid",
+              "s_name",
+              "sc_name",
+              "s_gid",
+              "sc_gid",
+              "stu_gov_id",
+              "first_name",
+              "last_name"
+            ],
+            "agg": [
+              {
+                "col_new": "n_items_responded",
+                "agg_type": "sum",
+                "col_target": "n_seen"
+              },
+              {
+                "col_new": "total_scaled_score",
+                "agg_type": "sum",
+                "col_target": "scaled_score"
+              }
+            ]
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "result",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_school_board_reports_scores_by_domain"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_school_board_reports_long",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "join",
+          "df_output": "result",
+          "config": {
+            "how": "inner",
+            "left": "attempts",
+            "right": "item_responses",
+            "left_on": "attempt_id",
+            "right_on": "ta_id"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "result",
+          "config": {
+            "df_input": "result",
+            "cols": [
+              "test_window_id",
+              "tw_type_slug",
+              "s_name",
+              "sc_name",
+              "uid",
+              "stu_gov_id",
+              "first_name",
+              "last_name",
+              "window_code",
+              "lang",
+              "item_id",
+              "item_domain",
+              "is_practice_test",
+              "score",
+              "weight",
+              "is_nr",
+              "formatted_response",
+              "response_type"
+            ]
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_ta_detail_in_sb"
+        }
+      },
+      {
+        "param": "item_responses",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_responses_with_domain"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_item_register",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "restrict-cols",
+          "df_output": "tw",
+          "config": {
+            "df_input": "tw",
+            "cols": [
+              "test_window_id",
+              "tw_type_slug"
+            ]
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "twtar",
+          "config": {
+            "df_input": "twtar",
+            "cols": [
+              "twtar_id",
+              "test_window_id",
+              "type_slug",
+              "window_code"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "twtar",
+          "config": {
+            "how": "inner",
+            "left": "twtar",
+            "right": "tw",
+            "left_on": "test_window_id",
+            "right_on": "test_window_id"
+          }
+        },
+        {
+          "kind": "cast-col",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "col_target": "score_points",
+            "target_type": "number"
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "cols": [
+              "twtar_id",
+              "item_id",
+              "item_name",
+              "score_points",
+              "item_domain",
+              "is_practice_test"
+            ]
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "result",
+          "config": {
+            "how": "inner",
+            "left": "twtar",
+            "right": "item_register",
+            "left_on": "twtar_id",
+            "right_on": "twtar_id"
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "tw",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_tw"
+        }
+      },
+      {
+        "param": "twtar",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_twtar"
+        }
+      },
+      {
+        "param": "item_register",
+        "type": "dataframe",
+        "config": {
+          "asset": "load_item_register_consolidated"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_item_domain_register",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "result",
+          "config": {
+            "df_input": "item_register",
+            "group_by": [
+              "test_window_id",
+              "tw_type_slug",
+              "window_code",
+              "type_slug",
+              "item_domain"
+            ],
+            "agg": [
+              {
+                "col_new": "n_items",
+                "agg_type": "nunique",
+                "col_target": "item_id"
+              },
+              {
+                "col_new": "score_max_per_item",
+                "agg_type": "group-concat",
+                "col_target": "score_points"
+              },
+              {
+                "col_new": "score_max_total",
+                "agg_type": "sum",
+                "col_target": "score_points"
+              }
+            ]
+          }
+        }
+      ],
+      "output": "result"
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_register",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_item_register"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_sb_domain_accuracy_thresholds",
+    "description": "",
+    "structure": "dataframe",
+    "method": "api-request",
+    "methodConfig": {
+      "endpoint": "public/dist-admin/data-exporter/cutoffs",
+      "method": "POST",
+      "props": {},
+      "data": {
+        "item_domains": []
+      }
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_domains",
+        "type": "asset-col",
+        "config": {
+          "asset": "trfm_scores_by_domain",
+          "col": "item_domain"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_sb_accuracy_per_item_domain",
+    "description": "",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "map-col",
+          "df_output": "scores_by_domain",
+          "config": {
+            "df_input": "scores_by_domain",
+            "col_output": "accuracy",
+            "source_cols": [
+              "n_correct",
+              "n_seen"
+            ],
+            "operation": "percentage"
+          }
+        },
+        {
+          "kind": "join",
+          "df_output": "scores_by_domain",
+          "config": {
+            "how": "left",
+            "left": "scores_by_domain",
+            "right": "domain_accuracy_thresholds",
+            "left_on": [
+              "item_domain"
+            ],
+            "right_on": [
+              "item_domain"
+            ]
+          }
+        },
+        {
+          "kind": "map-col",
+          "df_output": "scores_by_domain",
+          "config": {
+            "df_input": "scores_by_domain",
+            "col_output": "outcome",
+            "source_cols": [
+              "accuracy",
+              "accuracy_threshold"
+            ],
+            "operation": "less-than",
+            "value_true": "In Focus",
+            "value_false": "Not In Focus"
+          }
+        }
+      ],
+      "output": "scores_by_domain"
+    },
+    "dependencySourcings": [
+      {
+        "param": "scores_by_domain",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_scores_by_domain"
+        }
+      },
+      {
+        "param": "domain_accuracy_thresholds",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_sb_domain_accuracy_thresholds"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_check_duplicate_items_in_register",
+    "description": "Check asset to flag duplicate items in item register",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "group_by": [
+              "type_slug",
+              "window_code",
+              "item_id"
+            ],
+            "agg": [
+              {
+                "col_new": "n",
+                "agg_type": "count",
+                "col_target": "item_id"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "filter-col",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "col": "n",
+            "comparison": "greater-than",
+            "value": 1
+          }
+        }
+      ],
+      "output": "item_register"
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_register",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_item_register"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "trfm_check_duplicate_items_in_tw",
+    "description": "Warning: Check asset to flag duplicate items in test window",
+    "structure": "dataframe",
+    "method": "transforms",
+    "methodConfig": {
+      "sequence": [
+        {
+          "kind": "group-by",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "group_by": [
+              "test_window_id",
+              "item_id"
+            ],
+            "agg": [
+              {
+                "col_new": "n",
+                "agg_type": "count",
+                "col_target": "item_id"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "filter-col",
+          "df_output": "item_register",
+          "config": {
+            "df_input": "item_register",
+            "col": "n",
+            "comparison": "greater-than",
+            "value": 1
+          }
+        }
+      ],
+      "output": "item_register"
+    },
+    "dependencySourcings": [
+      {
+        "param": "item_register",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_item_register"
+        }
+      }
+    ]
+  }
+]

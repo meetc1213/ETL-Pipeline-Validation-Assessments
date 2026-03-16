@@ -1,0 +1,95 @@
+{
+    "slug": "trfm_scores_by_domain",
+    "description": "Total scores for each item_domain for each attempt.",
+    "structure": "dataframe",
+    "method":"transforms",
+    "schema_simple": [
+      "window_code",
+      "uid",
+      "item_domain",
+      "total_score",
+      "total_weight",
+      "n_seen",
+      "n_correct"
+    ],
+     "methodConfig": {
+      "sequence":[
+        {
+          "kind": "join",
+          "df_output": "joined_df",
+          "config": {
+            "how": "inner",
+            "left": "attempts",
+            "right": "item_responses",
+            "left_on": "attempt_id",
+            "right_on": "ta_id"
+          }
+        },
+        {
+          "kind": "group-by",
+          "df_output": "result",
+          "config": {
+            "df_input": "joined_df",
+            "group_by": [
+              "uid",
+              "item_domain"
+            ],
+            "agg": [
+              {
+                "col_new": "total_score",
+                "agg_type": "sum",
+                "col_target": "score"
+              },
+              {
+                "col_new": "total_weight",
+                "agg_type": "sum",
+                "col_target": "weight"
+              },
+              {
+                "col_new": "n_seen",
+                "agg_type": "sum",
+                "col_target": "n_seen"
+              },
+              {
+                "col_new": "n_correct",
+                "agg_type": "sum",
+                "col_target": "n_correct"
+              }
+            ]
+          }
+        },
+        {
+          "kind": "restrict-cols",
+          "df_output": "result",
+          "config": {
+            "df_input": "result",
+            "cols": [
+              "window_code",
+              "uid",
+              "item_domain",
+              "total_score",
+              "total_weight",
+              "n_seen",
+              "n_correct"
+            ]
+          }
+        }
+      ]
+     },
+     "dependencySourcings":[
+     {
+        "param": "attempts",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_ta_detail_in_sb"
+        }
+      },
+      {
+        "param": "item_responses",
+        "type": "dataframe",
+        "config": {
+          "asset": "trfm_responses_with_domain"
+        }
+      }
+     ]
+  }
