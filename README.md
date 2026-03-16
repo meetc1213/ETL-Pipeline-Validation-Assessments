@@ -1,6 +1,6 @@
 # Vretta Data Analyst Interview Assessments
 
-Solutions to technical interview assessments for a Data Analyst position at Vretta, covering ETL pipeline design and data validation. Each problem is solved in Python and documented with a written report.
+Solutions to technical interview assessments for a Data Analyst position at Vretta, covering ETL pipeline design and data validation. Each problem is solved in Python and accompanied by a written report covering the approach, methodology, assumptions, and findings. Both can be found together in the respective assessment folder.
 
 ---
 
